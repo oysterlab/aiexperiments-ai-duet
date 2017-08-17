@@ -23,7 +23,8 @@ import {About} from 'interface/About'
 import {Tutorial} from 'ai/Tutorial'
 import 'babel-polyfill'
 
-/////////////// SPLASH ///////////////////	
+const socket = require('socket.io-client')(location.host + '/visual')
+/////////////// SPLASH ///////////////////
 
 const about = new About(document.body)
 const splash = new Splash(document.body)
@@ -52,6 +53,15 @@ about.on('open', () => {
 
 /////////////// PIANO ///////////////////
 
+/*
+	{
+		note: "" (48 ~ 95),
+		type: "",
+		from: "user or ai",
+		time: ""
+	}
+*/
+
 const container = document.createElement('div')
 container.id = 'container'
 document.body.appendChild(container)
@@ -62,19 +72,44 @@ const keyboard = new Keyboard(container)
 const sound = new Sound()
 sound.load()
 
+const sendSignal = function(signal) {
+	if(socket) {
+		socket.emit('music_signal', signal)
+	}
+}
+
+const startTime = (new Date()).getTime()
+
+const now = function() {
+	return ((new Date()).getTime() - startTime) / 1000.
+}
+
 keyboard.on('keyDown', (note) => {
 	sound.keyDown(note)
 	ai.keyDown(note)
 	glow.user()
+	sendSignal({
+			note,
+			type: 'keyDown',
+			from: 'user',
+			time: now()
+		})
 })
 
 keyboard.on('keyUp', (note) => {
 	sound.keyUp(note)
 	ai.keyUp(note)
 	glow.user()
+	sendSignal({
+			note,
+			type: 'keyUp',
+			from: 'user',
+			time: now()
+		})
 })
 
 /////////////// AI ///////////////////
+
 
 const ai = new AI()
 
@@ -82,12 +117,24 @@ ai.on('keyDown', (note, time) => {
 	sound.keyDown(note, time, true)
 	keyboard.keyDown(note, time, true)
 	glow.ai(time)
+	sendSignal({
+		note,
+		type: 'keyDown',
+		from: 'ai',
+		time
+	})
 })
 
 ai.on('keyUp', (note, time) => {
 	sound.keyUp(note, time, true)
-	keyboard.keyUp(note, time, true)	
+	keyboard.keyUp(note, time, true)
 	glow.ai(time)
+	sendSignal({
+		note,
+		type: 'keyUp',
+		from: 'ai',
+		time
+	})
 })
 
 /////////////// TUTORIAL ///////////////////
