@@ -65,6 +65,12 @@ def index():
 def connect():
     print('connected!')
 
+@socketio.on('start', namespace='/visual')
+def connect(d):
+    print('start', d);
+    emit('started', d, broadcast=True)
+
+
 @socketio.on('disconnect', namespace='/visual')
 def disconnect():
     print "Disconnected"

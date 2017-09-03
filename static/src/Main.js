@@ -79,6 +79,10 @@ const sendSignal = function(signal) {
 }
 
 const startTime = (new Date()).getTime()
+if(socket) {
+	console.log('start', startTime)
+	socket.emit('start', {startTime})
+}
 
 const now = function() {
 	return ((new Date()).getTime() - startTime) / 1000.

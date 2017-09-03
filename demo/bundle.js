@@ -3,15 +3,127 @@
 
 var socket = require('socket.io-client')('http://localhost:5000/visual');
 
-var ai_signals = [];
-var user_signals = [];
+var aiSignals = [];
+var userSignals = [];
 
+var mergedSignals = [];
+var startTime = -1;
 if (socket) {
+  socket.on('started', function (d) {
+    console.log(d.startTime);
+    startTime = d.startTime;
+  });
+
   socket.on('toss-signal', function (signal) {
-    signal.from == 'user' ? user_signals.push(signal) : ai_signals.push(signal);
-    console.log(user_signals, ai_signals);
+    mergedSignals = [];
+
+    signal.from == 'user' ? userSignals.push(signal) : aiSignals.push(signal);
+    //   console.log("user_signals", userSignals);
+    //   console.log("ai_signals", aiSignals);
+
+    userSignals.forEach(function (_ref, i, signals) {
+      var note = _ref.note,
+          type = _ref.type,
+          time = _ref.time;
+
+      if (type == 'keyDown') {
+        var endSignal = signals.find(function (s, i_) {
+          return s.note == note && s.type == 'keyUp' && time < s.time;
+        });
+        var endTime = endSignal ? endSignal.time : -1;
+
+        mergedSignals.push({
+          from: 'user',
+          note: note,
+          start: time,
+          end: endTime,
+          during: endTime != -1 ? endTime - time : -1
+        });
+      }
+    });
+
+    aiSignals.forEach(function (_ref2, i, signals) {
+      var note = _ref2.note,
+          type = _ref2.type,
+          time = _ref2.time;
+
+      if (type == 'keyDown') {
+        var endSignal = signals.find(function (s, i_) {
+          return s.note == note && s.type == 'keyUp' && time < s.time;
+        });
+        var endTime = endSignal ? endSignal.time : -1;
+
+        mergedSignals.push({
+          from: 'ai',
+          note: note,
+          start: time,
+          end: endTime,
+          during: endTime != -1 ? endTime - time : -1
+        });
+      }
+    });
   });
 }
+
+var WIDTH = window.innerWidth;
+var HEIGHT = window.innerHeight;
+
+var canvas = document.createElement('canvas');
+canvas.width = WIDTH;
+canvas.height = HEIGHT;
+
+document.body.appendChild(canvas);
+var context = canvas.getContext('2d');
+
+function render(t) {
+
+  context.fillStyle = '#000';
+  context.fillRect(0, 0, WIDTH, HEIGHT);
+
+  var hGap = HEIGHT / 30;
+  var now = (new Date().getTime() - startTime) / 1000.;
+
+  // context.beginPath()
+  // context.fillStyle = '#f0f'
+  // context.fillRect(100, 100, now * 5, 20)
+  // context.closePath()
+
+  mergedSignals.forEach(function (_ref3) {
+    var from = _ref3.from,
+        signal = _ref3.signal,
+        note = _ref3.note,
+        start = _ref3.start,
+        end = _ref3.end,
+        during = _ref3.during;
+
+    var x = start * 40 - now * 25.;
+    var y = (note - 46) * hGap;
+    var h = hGap;
+
+    var w = during == -1 ? now - start : during;
+
+    if (from == 'ai') {
+      w = during + now - end;
+      w = w > during ? during : w;
+
+      if (w < 0) w = 0;
+    }
+
+    w *= 40;
+
+    // if(during == -1)
+    //   console.log((new Date()).getTime(), startTime, start, w)
+
+    context.beginPath();
+    context.fillStyle = from == 'user' ? '#fff' : '#f0f';
+    context.rect(x, y, w, h);
+    context.fill();
+    context.closePath();
+  });
+  requestAnimationFrame(render);
+}
+
+requestAnimationFrame(render);
 
 },{"socket.io-client":35}],2:[function(require,module,exports){
 module.exports = after
