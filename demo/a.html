@@ -1,0 +1,188 @@
+<!DOCTYPE html><html class=''>
+<head><script src='//production-assets.codepen.io/assets/editor/live/console_runner-079c09a0e3b9ff743e39ee2d5637b9216b3545af0de366d4b9aad9dc87e26bfd.js'></script><script src='//production-assets.codepen.io/assets/editor/live/events_runner-73716630c22bbc8cff4bd0f07b135f00a0bdc5d14629260c3ec49e5606f98fdd.js'></script><script src='//production-assets.codepen.io/assets/editor/live/css_live_reload_init-2c0dc5167d60a5af3ee189d570b1835129687ea2a61bee3513dee3a50c115a77.js'></script><meta charset='UTF-8'><meta name="robots" content="noindex"><link rel="shortcut icon" type="image/x-icon" href="//production-assets.codepen.io/assets/favicon/favicon-8ea04875e70c4b0bb41da869e81236e54394d63638a1ef12fa558a4a835f1164.ico" /><link rel="mask-icon" type="" href="//production-assets.codepen.io/assets/favicon/logo-pin-f2d2b6d2c61838f7e76325261b7195c27224080bc099486ddd6dccb469b8e8e6.svg" color="#111" /><link rel="canonical" href="https://codepen.io/tksiiii/pen/BjYObd" />
+
+
+<style class="cp-pen-styles">body {
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}</style></head><body>
+
+<script src='//production-assets.codepen.io/assets/common/stopExecutionOnTimeout-b2a7b3fe212eaa732349046d8416e00a9dec26eb7fd347590fbced3ab38af52e.js'></script><script src='https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.4.21/p5.min.js'></script>
+<script>var scketch = function(p){
+
+  var particleNum = 600;
+  var particle;
+  var particles = [];
+  var pixels = [];
+  var img;
+
+
+  /*
+
+  particleクラス
+  --------------------------------------------------------*/
+  var Particle = function(pos,v,d,c){
+    this.p = pos;
+    this.temp_p = this.p.copy();
+    this.defaultPos = this.p.copy();
+    this.v = v;
+    this.a = p.createVector(0,0);
+    this.d = d;
+    this.r = d/2;
+    this.color = c;
+    this.mass = this.r * 0.2;
+    this.noise_x = p.random(1000);
+    this.noise_y = p.random(1000);
+  }
+  Particle.prototype.addForce = function(f){
+    this.a.add(f);
+    this.a.div(this.mass);
+  }
+  Particle.prototype.update = function(){
+    this.v.add(this.a);
+    this.p.add(this.v);
+    this.a.mult(0);
+  }
+  Particle.prototype.walk = function(){
+    this.noise_x += 0.01;
+    this.noise_y += 0.01;
+    var force = p.createVector(0,0);
+    var to = p.createVector(p.noise(this.noise_x)*this.d*2-this.d,p.noise(this.noise_y)*this.d*2-this.d);
+    this.temp_p = p5.Vector.add(this.p,to);
+    var toTempPos = p5.Vector.sub(this.temp_p,this.p);
+    force = p5.Vector.mult(toTempPos,0.02);
+    this.addForce(force);
+  }
+  Particle.prototype.attract = function(){
+    var radius = 600;
+    var mouse;
+    if(p.touchIsDown){
+      mouse = p.createVector(p.touchX,p.touchY);
+    }else{
+      mouse = p.createVector(p.mouseX,p.mouseY);
+    }
+    var dist = p5.Vector.dist(mouse,this.p);
+    if(dist > 0 && dist < radius){
+      var force = p.createVector(0,0);
+      var toMouse = p5.Vector.sub(mouse,this.p);
+      toMouse.normalize();
+      var s = dist/radius;
+      var amp = 0.08;
+      var strength = 60;
+      var power = (1/p.pow(s,0.5*amp)) - 1;
+      power *= strength;
+      force = p5.Vector.mult(toMouse,power);
+      this.addForce(force);
+    }
+  }
+  Particle.prototype.returnPos = function(){
+    var force = p.createVector(0,0);
+    var toDefault = p5.Vector.sub(this.defaultPos,this.p);
+    force = p5.Vector.mult(toDefault,0.03);
+    this.addForce(force);
+  }
+  Particle.prototype.draw = function(){
+    p.noStroke();
+    //gradation
+    var grad  = p.drawingContext.createRadialGradient(this.p.x,this.p.y,0,this.p.x,this.p.y,this.r);
+    grad.addColorStop(1,'rgba(0, 0, 0, 0)');
+    grad.addColorStop(0,'rgba(' + this.color.levels[0] + ',' + this.color.levels[1] + ',' + this.color.levels[2] + ','+ this.color.levels[3] +')');
+    p.drawingContext.fillStyle = grad;
+    //p.fill(this.color);
+    p.ellipse(this.p.x,this.p.y,this.d,this.d);
+  }
+
+
+
+
+
+
+  /*
+
+  p5　フレームワーク
+  --------------------------------------------------------*/
+  p.setup = function(){
+    p.createCanvas(p.windowWidth, p.windowHeight);
+    p.blendMode(p.ADD);
+    p.background(0);
+
+    init();
+
+    //console.log(particles.length);
+
+  }
+
+  p.draw = function(){
+    p.clear();
+    p.background(0);
+
+    for(var i=0; i<particles.length; i++){if (window.CP.shouldStopExecution(1)){break;}
+      particles[i].walk();
+      if (p.mouseIsPressed || p.touchIsDown){
+        particles[i].attract();
+      } else{
+        particles[i].returnPos();
+      }
+      particles[i].v.mult(0.9);
+      particles[i].update();
+      particles[i].draw();
+    }
+window.CP.exitedLoop(1);
+
+
+    //frame rate
+    // p.fill(255);
+    // p.textSize(18);
+    // p.text('fps: '+ p.floor(p.frameRate(),10), 10, 30);
+
+  }
+
+  p.windowResized = function () {
+    p.resizeCanvas(p.windowWidth, p.windowHeight);
+    particles = [];
+    init();
+  }
+
+
+
+
+  function init(){
+
+    var radius;
+    if(p.windowWidth > p.windowHeight ){
+      radius = p.windowHeight * 0.4;
+    }else{
+      radius = p.windowWidth * 0.4;
+    }
+
+    for(var i=0; i<particleNum; i++){if (window.CP.shouldStopExecution(2)){break;}
+      var t = p.map(i,0,particleNum,0,p.TWO_PI);
+      var x = p.sin(t*2+p.radians(90))*p.cos(t*8)*(radius) + p.windowWidth/2;
+      var y = p.sin(t*2+p.radians(0))*p.cos(t*8)*(radius) + p.windowHeight/2;
+      var pos = p.createVector(x,y);
+      var randompos = p.createVector(p.random(-5,5),p.random(-5,5));
+      pos.add(randompos);
+      var v = p.createVector(0,0);
+      var c = p.color(p.random(50,255),p.random(50,255),p.random(50,255),255);
+      var size = p.random(2,30);
+      var particle = new Particle(pos,v,size,c);
+      particles.push(particle);
+    }
+window.CP.exitedLoop(2);
+
+
+  }
+
+
+
+}
+
+
+
+
+new p5(scketch);
+
+//# sourceURL=pen.js
+</script>
+</body></html>

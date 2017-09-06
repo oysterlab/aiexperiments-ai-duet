@@ -1,12 +1,17 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
 
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
 var socket = require('socket.io-client')('http://localhost:5000/visual');
 
 var aiSignals = [];
 var userSignals = [];
 
 var mergedSignals = [];
+var points = [];
 var startTime = -1;
 if (socket) {
   socket.on('started', function (d) {
@@ -14,54 +19,97 @@ if (socket) {
     startTime = d.startTime;
   });
 
+  var signals = [];
+  var keydowns = {};
+
+  setInterval(function () {
+    var now = new Date().getTime();
+
+    aiSignals.forEach(function (signal, i) {
+
+      if (Math.abs((now - startTime) / 1000 - signal.time) < 0.01) {
+
+        if (signal.from == 'ai' && signal.type == 'keyDown') {
+          var p = new Point(signal);
+          points.push(p);
+          aiSignals.splice(i, 1);
+        } else if (signal.from == 'ai' && signal.type == 'keyUp') {
+          var borns = points.filter(function (p) {
+            return p.state == 'born' && p.note == signal.note && p.from == signal.from;
+          });
+          borns.sort(function (a, b) {
+            return a.date > b.date;
+          });
+
+          if (borns[0]) {
+            borns[0].bornx = borns[0].x;
+            borns[0].bornY = borns[0].y;
+            borns[0].state = 'move';
+            aiSignals.splice(i, 1);
+          }
+        }
+      }
+    });
+  }, 10);
+
   socket.on('toss-signal', function (signal) {
     mergedSignals = [];
 
     signal.from == 'user' ? userSignals.push(signal) : aiSignals.push(signal);
-    //   console.log("user_signals", userSignals);
-    //   console.log("ai_signals", aiSignals);
 
-    userSignals.forEach(function (_ref, i, signals) {
-      var note = _ref.note,
-          type = _ref.type,
-          time = _ref.time;
+    if (signal.from == 'user' && signal.type == 'keyDown') {
+      var p = new Point(signal);
+      points.push(p);
+    } else if (signal.from == 'user' && signal.type == 'keyUp') {
+      var borns = points.filter(function (p) {
+        return p.state == 'born' && p.note == signal.note && p.from == signal.from;
+      });
+      borns.sort(function (a, b) {
+        return a.date > b.date;
+      });
 
-      if (type == 'keyDown') {
-        var endSignal = signals.find(function (s, i_) {
-          return s.note == note && s.type == 'keyUp' && time < s.time;
-        });
-        var endTime = endSignal ? endSignal.time : -1;
-
-        mergedSignals.push({
-          from: 'user',
-          note: note,
-          start: time,
-          end: endTime,
-          during: endTime != -1 ? endTime - time : -1
-        });
+      if (borns[0]) {
+        borns[0].bornx = borns[0].x;
+        borns[0].bornY = borns[0].y;
+        borns[0].state = 'move';
       }
-    });
+    }
 
-    aiSignals.forEach(function (_ref2, i, signals) {
-      var note = _ref2.note,
-          type = _ref2.type,
-          time = _ref2.time;
-
-      if (type == 'keyDown') {
-        var endSignal = signals.find(function (s, i_) {
-          return s.note == note && s.type == 'keyUp' && time < s.time;
-        });
-        var endTime = endSignal ? endSignal.time : -1;
-
-        mergedSignals.push({
-          from: 'ai',
-          note: note,
-          start: time,
-          end: endTime,
-          during: endTime != -1 ? endTime - time : -1
-        });
-      }
-    });
+    // userSignals.forEach(({note, type, time}, i, signals) => {
+    //   if (type == 'keyDown') {
+    //     const endSignal = signals.find((s, i_) => {
+    //       return (s.note == note && s.type == 'keyUp' && time < s.time)
+    //     })
+    //     const endTime = (endSignal) ? endSignal.time : -1
+    //
+    //
+    //     mergedSignals.push({
+    //       from: 'user',
+    //       note,
+    //       start: time,
+    //       end: endTime,
+    //       during: (endTime != -1) ? endTime - time : -1
+    //     })
+    //   }
+    // })
+    //
+    // aiSignals.forEach(({note, type, time}, i, signals) => {
+    //   if (type == 'keyDown') {
+    //     const endSignal = signals.find((s, i_) => {
+    //       return (s.note == note && s.type == 'keyUp' && time < s.time)
+    //     })
+    //     const endTime = (endSignal) ? endSignal.time : -1
+    //
+    //     mergedSignals.push({
+    //       from: 'ai',
+    //       note,
+    //       start: time,
+    //       end: endTime,
+    //       during: (endTime != -1) ? endTime - time : -1
+    //     })
+    //
+    //   }
+    // })
   });
 }
 
@@ -75,51 +123,105 @@ canvas.height = HEIGHT;
 document.body.appendChild(canvas);
 var context = canvas.getContext('2d');
 
-function render(t) {
+context.globalCompositeOperation = 'screen';
 
-  context.fillStyle = '#000';
+var LIFE = 50;
+var BASE_LIFE = 50;
+var HEIGHT_MARGIN = 30;
+
+var notes = 'asdfghjkl';
+
+var Point = function () {
+  function Point(_ref) {
+    var time = _ref.time,
+        note = _ref.note,
+        from = _ref.from;
+
+    _classCallCheck(this, Point);
+
+    this.time = time;
+    this.from = from;
+    this.note = note;
+
+    this.init();
+  }
+
+  _createClass(Point, [{
+    key: 'init',
+    value: function init() {
+      var note = this.note,
+          from = this.from;
+
+
+      this.x = (WIDTH - 200) * ((note - 48) / (71 - 48)) + 100 + (Math.random() - 0.5) * 2; //(2 * Math.random() - 1)
+
+      this.y = from == 'user' ? HEIGHT - HEIGHT_MARGIN + 10 * Math.random() : HEIGHT_MARGIN + 10 * Math.random(); //(2 * Math.random() - 1)
+      this.r = 1;
+      this.state = 'born';
+      this.color = [parseInt(Math.random() * 255), parseInt(Math.random() * 255), parseInt(Math.random() * 255)];
+
+      this.dir = from == 'user' ? 1 : -1;
+      this.life = BASE_LIFE + LIFE * Math.random();
+      this.remainLife = this.life;
+    }
+  }, {
+    key: 'draw',
+    value: function draw() {
+      var x = this.x,
+          y = this.y,
+          r = this.r,
+          color = this.color;
+
+      //    console.log(this.from, x, y, r)
+
+      var grad = context.createRadialGradient(x, y, 0, x, y, r);
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      grad.addColorStop(0, 'rgba(' + color[0] + ',' + color[1] + ',' + color[2] + ',1)');
+      context.fillStyle = grad;
+
+      context.beginPath();
+      context.arc(x, y, r, 0, 2 * Math.PI, false);
+      context.closePath();
+      context.fill();
+    }
+  }, {
+    key: 'update',
+    value: function update() {
+      var time = this.time,
+          note = this.note,
+          from = this.from,
+          state = this.state,
+          life = this.life,
+          dir = this.dir;
+
+
+      if (state == 'born') {
+        var now = (new Date().getTime() - startTime) / 1000;
+
+        if (now > time) {
+          this.r = Math.pow((now - time) * 10, 1 + 0.5 * Math.random()) * 4;
+        }
+      } else if (state == 'move') {
+        this.remainLife -= 1;
+
+        if (this.remainLife > 0) this.y = this.bornY - dir * (HEIGHT - HEIGHT_MARGIN) * 0.5 * (life - this.remainLife) / life;
+      }
+    }
+  }]);
+
+  return Point;
+}();
+
+function render() {
+  context.clearRect(0, 0, WIDTH, HEIGHT);
+  context.fillStyle = 'rgba(0,0,0, 1)';
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
-  var hGap = HEIGHT / 30;
-  var now = (new Date().getTime() - startTime) / 1000.;
-
-  // context.beginPath()
-  // context.fillStyle = '#f0f'
-  // context.fillRect(100, 100, now * 5, 20)
-  // context.closePath()
-
-  mergedSignals.forEach(function (_ref3) {
-    var from = _ref3.from,
-        signal = _ref3.signal,
-        note = _ref3.note,
-        start = _ref3.start,
-        end = _ref3.end,
-        during = _ref3.during;
-
-    var x = start * 40 - now * 25.;
-    var y = (note - 46) * hGap;
-    var h = hGap;
-
-    var w = during == -1 ? now - start : during;
-
-    if (from == 'ai') {
-      w = during + now - end;
-      w = w > during ? during : w;
-
-      if (w < 0) w = 0;
-    }
-
-    w *= 40;
-
-    // if(during == -1)
-    //   console.log((new Date()).getTime(), startTime, start, w)
-
-    context.beginPath();
-    context.fillStyle = from == 'user' ? '#fff' : '#f0f';
-    context.rect(x, y, w, h);
-    context.fill();
-    context.closePath();
+  points.forEach(function (p, i) {
+    p.draw();
+    p.update();
   });
+
   requestAnimationFrame(render);
 }
 

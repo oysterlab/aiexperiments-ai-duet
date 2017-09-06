@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        padding: 0px;
+        margin: 0px;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const WIDTH = window.innerWidth
+      const HEIGHT = window.innerHeight
+      const canvas = document.createElement('canvas')
+      canvas.width = WIDTH
+      canvas.height = HEIGHT
+      document.body.appendChild(canvas)
+
+      const context = canvas.getContext('2d')
+
+      context.globalCompositeOperation = 'screen'
+      const LIFE = 50
+
+      class Point {
+        constructor() {
+          this.relive()
+        }
+
+        relive() {
+          this.x = (WIDTH - 200) * Math.random() + 100 //(2 * Math.random() - 1)
+          this.y = HEIGHT * Math.random() //(2 * Math.random() - 1)
+          this.z = 0.00000001
+          this.r = Math.random() * 10 + 10
+          this.color = [parseInt(Math.random() * 255), parseInt(Math.random() * 255), parseInt(Math.random() * 255)]
+
+          var grad  = context.createRadialGradient(this.x,this.y,0,this.x,this.y,this.r);
+          grad.addColorStop(1,'rgba(0, 0, 0, 0)');
+          grad.addColorStop(0,'rgba(' + this.color[0] + ',' + this.color[1] + ',' + this.color[2] + ',1)');
+          this.fillColor = grad
+
+//          this.fillColor = 'rgb('+this.color[0]+','+this.color[1]+','+this.color[2]+')'
+          this.dir = Math.random()
+          this.life = LIFE * Math.random()
+        }
+
+        update() {
+          this.z = this.z + ((this.dir < 0.5) ? -1 : 1) * 0.5
+          if(this.z < 0)
+            this.z
+
+          this.life += 0.1
+
+          if(this.life > LIFE) {
+            this.relive()
+          }
+        }
+
+        len(p) {
+          const {x, y, z} = this
+          return Math.sqrt(Math.pow(p.x - x, 2) + Math.pow(p.y - y, 2) + Math.pow(p.z - z, 2))
+        }
+      }
+
+      const points = []
+      for (let i = 0; i < 100; i++) {
+        const p = new Point()
+        points.push(p)
+      }
+
+      function render() {
+        context.clearRect(0, 0, WIDTH, HEIGHT)
+        context.fillStyle = 'rgba(0,0,0, 1)'
+        context.fillRect(0, 0, WIDTH, HEIGHT)
+
+
+        //
+        // points.forEach((p, i) => {
+        //
+        //   const x = p.x / p.z
+        //   const y = HEIGHT * .5 + p.y / p.z
+        //   const r = p.r * (1 - p.life / LIFE)
+        //
+        //   //line
+        //   const lenIdxes = []
+        //   for(let j = i + 1; j < points.length; j++) {
+        //     const l = p.len(points[j])
+        //     lenIdxes.push({idx:j, len: l})
+        //   }
+        //   lenIdxes.sort((a, b) => a.len > b.len)
+        //
+        //   lenIdxes.forEach(({idx}, j) => {
+        //     const a = (1. - j/lenIdxes.length)
+        //     const p_ = points[idx]
+        //     const x_ = WIDTH * .5 + p_.x / p_.z
+        //     const y_ = HEIGHT * .5 + p_.y / p_.z
+        //
+        //     context.strokeStyle = 'rgba(255,255,255,'+a+')'
+        //     context.lineWidth = 0.05
+        //     context.beginPath()
+        //     context.moveTo(p.x, y)
+        //     context.lineTo(p_.x, y_)
+        //     context.closePath()
+        //     context.stroke()
+        //   })
+        // })
+
+
+
+        points.forEach((p, i) => {
+
+          const x = p.x / p.z
+          const y = HEIGHT * .5 + p.y / p.z
+          const r = p.r * (1 - p.life / LIFE)
+
+          //circle
+          var grad  = context.createRadialGradient(p.x, y, 0, p.x, y, r);
+          grad.addColorStop(1, 'rgba(0, 0, 0, 0)'); //'rgba(' + p.color[0] + ',' + p.color[1] + ',' + p.color[2] + ',0)');
+          grad.addColorStop(0, 'rgba(' + p.color[0] + ',' + p.color[1] + ',' + p.color[2] + ',1)');
+
+          context.fillStyle = grad //p.fillColor
+
+
+          context.beginPath()
+          context.arc(p.x, y, r, 0, 2 * Math.PI, false)
+          context.closePath()
+          context.fill()
+
+          p.update()
+        })
+
+
+
+        requestAnimationFrame(render)
+      }
+
+      requestAnimationFrame(render)
+    </script>
+  </body>
+</html>

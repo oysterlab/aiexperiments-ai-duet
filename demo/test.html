@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        padding: 0px;
+        margin: 0px;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const startTime = 0
+      const WIDTH = window.innerWidth
+      const HEIGHT = window.innerHeight
+      const canvas = document.createElement('canvas')
+      canvas.width = WIDTH
+      canvas.height = HEIGHT
+      document.body.appendChild(canvas)
+
+      const context = canvas.getContext('2d')
+
+      context.globalCompositeOperation = 'screen'
+      const LIFE = 50
+      const BASE_LIFE = 50
+      const HEIGHT_MARGIN = 30
+
+      const notes = 'asdfghjkl'
+
+      class Point {
+        constructor({time, note, from}) {
+          this.time = time
+          this.from = from
+          this.note = note
+
+          this.init()
+        }
+
+        init() {
+          const { note, from } = this
+
+          this.x = (WIDTH - 200) * (notes.indexOf(note) / notes.length) + 100 + (Math.random() - 0.5) * 2 * 50 //(2 * Math.random() - 1)
+
+          this.y = (from == 'user') ? HEIGHT - HEIGHT_MARGIN + 10 * Math.random() : HEIGHT_MARGIN + 10 * Math.random() //(2 * Math.random() - 1)
+          this.r = 1
+          this.state = 'born'
+          this.color = [parseInt(Math.random() * 255), parseInt(Math.random() * 255), parseInt(Math.random() * 255)]
+
+          this.dir = (from == 'user') ? 1 : -1
+          this.life = BASE_LIFE + LIFE * Math.random()
+          this.remainLife = this.life
+        }
+
+        draw() {
+          const { x, y, r, color } = this
+
+          var grad  = context.createRadialGradient(x, y, 0, x, y, r);
+          grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          grad.addColorStop(0, 'rgba(' + color[0] + ',' + color[1] + ',' + color[2] + ',1)');
+          context.fillStyle = grad
+
+          context.beginPath()
+          context.arc(x, y, r, 0, 2 * Math.PI, false)
+          context.closePath()
+          context.fill()
+        }
+
+        update() {
+          const {time, note, from, state, life, dir} = this
+
+          if (state == 'born') {
+            const now = ((new Date()).getTime() - startTime) / 1000
+            this.r =  Math.pow((now - time) * 10, 1 + 1 * Math.random()) * 4
+          } else if (state == 'move') {
+            this.remainLife -= 1;
+
+            if(this.remainLife > 0 )
+              this.y = this.bornY - dir * (HEIGHT - HEIGHT_MARGIN) * 0.5 * (life - this.remainLife) / life
+          }
+
+        }
+      }
+
+      const points = []
+
+
+      function render() {
+        context.clearRect(0, 0, WIDTH, HEIGHT)
+        context.fillStyle = 'rgba(0,0,0, 1)'
+        context.fillRect(0, 0, WIDTH, HEIGHT)
+
+        points.forEach((p, i) => {
+          p.draw()
+          p.update()
+        })
+
+        requestAnimationFrame(render)
+      }
+
+      requestAnimationFrame(render)
+
+
+      const keydowns = {}
+
+      window.addEventListener('keydown', (e) => {
+        const signal = {
+          time: (new Date()).getTime() / 1000,
+          from: (Math.random() > 0.5) ? 'user' : 'ai',
+          note: e.key
+        }
+
+        if(!keydowns[e.key]) {
+          keydowns[e.key] = true
+          console.log('keydown', e.key)
+          points.push(new Point(signal))
+        }
+      })
+
+      window.addEventListener('keyup', (e) => {
+        const borns = points.filter((p) => (p.state == 'born') && p.note == e.key)
+        borns.sort((a, b) => a.date > b.date)
+
+        if(keydowns[e.key]) {
+          keydowns[e.key] = false
+          console.log('keyup', e.key)
+        }
+
+        if(borns[0]) {
+          borns[0].bornx = borns[0].x
+          borns[0].bornY = borns[0].y
+          borns[0].state = 'move'
+        }
+      })
+    </script>
+  </body>
+</html>
