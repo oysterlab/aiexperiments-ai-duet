@@ -20,14 +20,16 @@
       canvas.height = HEIGHT
       document.body.appendChild(canvas)
 
+      const notes = 'asdfghjkl'
+
+
       const context = canvas.getContext('2d')
 
       context.globalCompositeOperation = 'screen'
+
       const LIFE = 50
       const BASE_LIFE = 50
       const HEIGHT_MARGIN = 30
-
-      const notes = 'asdfghjkl'
 
       class Point {
         constructor({time, note, from}) {

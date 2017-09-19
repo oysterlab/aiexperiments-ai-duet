@@ -82,4 +82,4 @@ def receiveSignal(signal):
 
 if __name__ == '__main__':
 #    socketio.run(app.run(host='127.0.0.1', port=8080))
-    socketio.run(app)
+    socketio.run(app, host='0.0.0.0')
